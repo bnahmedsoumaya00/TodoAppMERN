@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Lock, UserPlus, Eye, EyeOff } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -49,8 +50,14 @@ const Register = () => {
       console.log('Registration response:', response);
       
       // Show success message
-      alert('✅ Registration successful! Please login.');
-      navigate('/login');
+      toast.success('Registration successful! Please login.', {
+        duration: 4000,
+      });
+      
+      // Small delay before redirect
+      setTimeout(() => {
+        navigate('/login');
+      }, 1000);
     } catch (err) {
       console.error('Full registration error:', err);
       
@@ -66,6 +73,7 @@ const Register = () => {
       }
       
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -130,15 +138,18 @@ const Register = () => {
       background: 'linear-gradient(135deg, #161925, #23395b)',
       padding: '2rem'
     }}>
-      <div style={{
-        maxWidth: '450px',
-        width: '100%',
-        background: '#23395b',
-        border: '1px solid #2d3748',
-        borderRadius: '16px',
-        padding: '32px',
-        boxShadow: '0 10px 15px rgba(0, 0, 0, 0.4)'
-      }}>
+      <div 
+        className="animate-fade-in"
+        style={{
+          maxWidth: '450px',
+          width: '100%',
+          background: '#23395b',
+          border: '1px solid #2d3748',
+          borderRadius: '16px',
+          padding: '32px',
+          boxShadow: '0 10px 15px rgba(0, 0, 0, 0.4)'
+        }}
+      >
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ 
             fontSize: '32px', 
@@ -283,6 +294,7 @@ const Register = () => {
           <button
             type="submit"
             disabled={loading}
+            className="button-hover"
             style={{
               ...buttonStyle,
               opacity: loading ? 0.7 : 1,

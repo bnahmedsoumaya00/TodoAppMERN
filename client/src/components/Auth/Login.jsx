@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, LogIn, Eye, EyeOff } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -20,9 +21,12 @@ const Login = () => {
 
     try {
       await login({ email, password });
+      toast.success(`Welcome back!`, { duration: 2000 });
       navigate('/dashboard');
     } catch (err) {
-      setError(err.error || 'Login failed. Please check your credentials.');
+      const errorMsg = err.error || 'Login failed. Please check your credentials.';
+      setError(errorMsg);
+      toast.error(errorMsg);
       console.error('Login error:', err);
     } finally {
       setLoading(false);
@@ -73,15 +77,18 @@ const Login = () => {
       background: 'linear-gradient(135deg, #161925, #23395b)',
       padding: '2rem'
     }}>
-      <div style={{
-        maxWidth: '400px',
-        width: '100%',
-        background: '#23395b',
-        border: '1px solid #2d3748',
-        borderRadius: '16px',
-        padding: '32px',
-        boxShadow: '0 10px 15px rgba(0, 0, 0, 0.4)'
-      }}>
+      <div 
+        className="animate-fade-in"
+        style={{
+          maxWidth: '400px',
+          width: '100%',
+          background: '#23395b',
+          border: '1px solid #2d3748',
+          borderRadius: '16px',
+          padding: '32px',
+          boxShadow: '0 10px 15px rgba(0, 0, 0, 0.4)'
+        }}
+      >
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ 
             fontSize: '32px', 
@@ -167,6 +174,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
+            className="button-hover"
             style={{
               ...buttonStyle,
               opacity: loading ? 0.7 : 1,
