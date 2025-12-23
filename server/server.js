@@ -2,8 +2,11 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-// Import database connection
 const db = require('./config/database');
+
+// Import routes
+const authRoutes = require('./routes/authRoutes');
+const todoRoutes = require('./routes/todoRoutes'); // ADD THIS
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,6 +27,10 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/todos', todoRoutes); // ADD THIS
 
 // Health check route
 app.get('/api/health', async (req, res) => {
@@ -65,4 +72,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 http://localhost:${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  console.log(`✅ Auth routes: http://localhost:${PORT}/api/auth`);
+  console.log(`✅ Todo routes: http://localhost:${PORT}/api/todos`); // ADD THIS
 });
