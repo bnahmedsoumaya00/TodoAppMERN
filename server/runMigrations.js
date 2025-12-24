@@ -1,89 +1,80 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const { runMigrations } = require('./runMigrations');
+const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
 
-dotenv.config();
-
-const app = express();
-
-const corsOptions = {
-  origin:  function(origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'https://todoappmern.vercel.app',
-      /^https:\/\/.*\.vercel\.app$/
-    ];
-    
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (allowed instanceof RegExp) {
-        return allowed.test(origin);
-      }
-      return allowed === origin;
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Routes
-const authRoutes = require('./routes/auth');
-const todoRoutes = require('./routes/todos');
-const categoryRoutes = require('./routes/categories');
-const attachmentRoutes = require('./routes/attachments');
-
-app.use('/api/auth', authRoutes);
-app.use('/api/todos', todoRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/attachments', attachmentRoutes);
-
-// Health check
-app.get('/', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'Todo API is running',
-    environment: process.env.NODE_ENV 
-  });
-});
-
-const PORT = process.env.PORT || 5000;
-
-// Run migrations and start server
-async function startServer() {
+async function runMigrations() {
+  let connection;
+  
   try {
-    // Run migrations first
-    await runMigrations();
+    console.log('🚀 Starting database migrations...\n');
     
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📍 http://localhost:${PORT}`);
-      console.log(`🌍 Environment: ${process.env. NODE_ENV}`);
-      console.log(`✅ Auth routes: http://localhost:${PORT}/api/auth`);
-      console.log(`✅ Todo routes: http://localhost:${PORT}/api/todos`);
-      console.log(`✅ Category routes: http://localhost:${PORT}/api/categories`);
-      console.log(`✅ Attachment routes: http://localhost:${PORT}/api/attachments`);
-      
-      // Start recurring task scheduler
-      const { startRecurringTaskScheduler } = require('./utils/recurringTaskScheduler');
-      startRecurringTaskScheduler();
+    // Connect to MySQL
+    connection = await mysql.createConnection({
+      host: process.env.DB_HOST || process.env. MYSQLHOST || 'localhost',
+      user: process.env. DB_USER || process.env. MYSQLUSER || 'root',
+      password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
+      database: process.env. DB_NAME || process.env. MYSQLDATABASE || 'todo_app',
+      port: process.env.DB_PORT || process.env.MYSQLPORT || 3306,
+      multipleStatements: true // Allow multiple SQL statements
     });
+
+    console.log('✅ Connected to database\n');
+
+    // Read SQL file
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+
+    console.log('📄 Executing schema. sql...\n');
+
+    // Execute all SQL statements
+    await connection.query(schema);
+
+    console.log('✅ Schema executed successfully!\n');
+
+    // Show tables
+    console.log('📋 Database Tables: ');
+    const [tables] = await connection.query('SHOW TABLES');
+    console.table(tables);
+
+    // Show todos table structure
+    console.log('\n📋 Todos Table Structure:');
+    const [columns] = await connection.query('DESCRIBE todos');
+    console.table(columns. map(col => ({
+      Field: col.Field,
+      Type: col.Type,
+      Null: col.Null,
+      Key: col.Key,
+      Default: col.Default
+    })));
+
+    console.log('\n🎉 All migrations completed successfully!\n');
+
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
+    console.error('\n❌ Migration failed: ');
+    console.error('Error:', error.message);
+    if (error.code) console.error('Code:', error.code);
+    if (error.sqlMessage) console.error('SQL Message:', error.sqlMessage);
+    throw error;
+  } finally {
+    if (connection) {
+      await connection.end();
+      console.log('✅ Database connection closed\n');
+    }
   }
 }
 
-startServer();
+// Run if called directly
+if (require.main === module) {
+  runMigrations()
+    .then(() => {
+      console.log('✅ Migration script completed');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('❌ Migration script failed:', error.message);
+      process.exit(1);
+    });
+}
+
+module.exports = { runMigrations };

@@ -8,7 +8,7 @@ dotenv.config();
 const app = express();
 
 const corsOptions = {
-  origin:  function(origin, callback) {
+  origin: function(origin, callback) {
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
@@ -31,7 +31,7 @@ const corsOptions = {
     }
   },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus:  200
 };
 
 app.use(cors(corsOptions));
@@ -50,38 +50,36 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/attachments', attachmentRoutes);
 
 // Health check
-app.get('/', (req, res) => {
+app. get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'Todo API is running',
-    environment: process.env.NODE_ENV 
+    environment: process.env. NODE_ENV 
   });
 });
 
 const PORT = process.env.PORT || 5000;
 
-// Run migrations and start server
+// Start server
 async function startServer() {
   try {
-    // Run migrations first
+    // Run migrations
+    console.log('Running database migrations...');
     await runMigrations();
     
     // Start server
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`\n🚀 Server running on port ${PORT}`);
       console.log(`📍 http://localhost:${PORT}`);
-      console.log(`🌍 Environment: ${process.env. NODE_ENV}`);
-      console.log(`✅ Auth routes: http://localhost:${PORT}/api/auth`);
-      console.log(`✅ Todo routes: http://localhost:${PORT}/api/todos`);
-      console.log(`✅ Category routes: http://localhost:${PORT}/api/categories`);
-      console.log(`✅ Attachment routes: http://localhost:${PORT}/api/attachments`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+      console.log(`✅ API Ready!\n`);
       
       // Start recurring task scheduler
       const { startRecurringTaskScheduler } = require('./utils/recurringTaskScheduler');
       startRecurringTaskScheduler();
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('❌ Failed to start server:', error. message);
     process.exit(1);
   }
 }
