@@ -16,7 +16,7 @@ const corsOptions = {
       /^https:\/\/.*\.vercel\.app$/
     ];
     
-    const isAllowed = allowedOrigins. some(allowed => {
+    const isAllowed = allowedOrigins.some(allowed => {
       if (allowed instanceof RegExp) {
         return allowed.test(origin);
       }
@@ -30,7 +30,7 @@ const corsOptions = {
     }
   },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus:  200
 };
 
 app.use(cors(corsOptions));
@@ -51,6 +51,47 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
 });
 
+// Database test endpoint
+app.get('/test-db', async (req, res) => {
+  try {
+    const db = require('./config/database');
+    
+    // Test connection
+    await db.query('SELECT 1');
+    
+    // Check if users table exists
+    const [tables] = await db.query("SHOW TABLES LIKE 'users'");
+    
+    if (tables.length === 0) {
+      return res.json({ 
+        status: 'error',
+        message: 'Users table does not exist!'
+      });
+    }
+    
+    // Check users table structure
+    const [columns] = await db.query('DESCRIBE users');
+    
+    res.json({ 
+      status: 'ok',
+      message: 'Database connected',
+      tables: tables.length,
+      usersColumns: columns.map(col => ({ 
+        field: col.Field, 
+        type: col.Type,
+        null: col.Null,
+        key: col.Key
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error',
+      message: error.message,
+      code: error.code
+    });
+  }
+});
+
 // Load routes with error handling
 console.log('📦 Loading routes...');
 
@@ -59,7 +100,7 @@ try {
   app.use('/auth', authRoutes);
   console.log('✅ Auth routes loaded at /auth');
 } catch (error) {
-  console.error('❌ Failed to load auth routes:', error.message);
+  console.error('❌ Failed to load auth routes:', error. message);
 }
 
 try {
@@ -86,19 +127,6 @@ try {
   console.error('❌ Failed to load attachment routes:', error.message);
 }
 
-// Debug: List all registered routes
-app._router.stack.forEach((middleware) => {
-  if (middleware. route) {
-    console.log(`Route: ${Object.keys(middleware.route.methods)} ${middleware.route.path}`);
-  } else if (middleware.name === 'router') {
-    middleware.handle.stack.forEach((handler) => {
-      if (handler.route) {
-        console.log(`Route: ${Object.keys(handler. route.methods)} ${handler.route.path}`);
-      }
-    });
-  }
-});
-
 const PORT = process.env.PORT || 5000;
 
 // Start server
@@ -110,7 +138,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   
   // Run migrations in background
   try {
-    console. log('Running database migrations in background.. .');
+    console.log('Running database migrations in background...');
     const { runMigrations } = require('./runMigrations');
     await runMigrations();
     console.log('✅ Migrations completed!\n');
