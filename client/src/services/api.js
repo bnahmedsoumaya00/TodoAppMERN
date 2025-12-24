@@ -27,52 +27,14 @@ api. interceptors.request.use(
 );
 
 // Response interceptor
-api.interceptors.response. use(
+api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Log error for debugging
-    console.error('API Error:', error);
-
-    // Handle timeout
-    if (error.code === 'ECONNABORTED') {
-      error.response = {
-        status: 408,
-        data: {
-          error: 'Request timeout.  Please try again.'
-        }
-      };
+    if (error.response?.status === 401) {
+      // Clear token and redirect to login
+      localStorage.removeItem('token');
+      window.location.href = '/login';
     }
-
-    // Handle network error
-    if (!error.response) {
-      error.response = {
-        status: 0,
-        data: {
-          error: 'Network error. Please check your internet connection.'
-        }
-      };
-    }
-
-    // Handle authentication errors
-    if (isAuthError(error)) {
-      const currentPath = window.location.pathname;
-      
-      // Only redirect if not already on login page
-      if (currentPath !== '/login' && currentPath !== '/register') {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        
-        // Store intended destination
-        localStorage.setItem('redirectAfterLogin', currentPath);
-        
-        window.location.href = '/login';
-      }
-    }
-
-    // Parse and attach formatted error
-    const parsedError = parseApiError(error);
-    error.parsedError = parsedError;
-
     return Promise.reject(error);
   }
 );
