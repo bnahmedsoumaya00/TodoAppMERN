@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { runMigrations } = require('./runMigrations');
 
 dotenv.config();
 
@@ -17,7 +16,7 @@ const corsOptions = {
       /^https:\/\/.*\.vercel\.app$/
     ];
     
-    const isAllowed = allowedOrigins. some(allowed => {
+    const isAllowed = allowedOrigins.some(allowed => {
       if (allowed instanceof RegExp) {
         return allowed.test(origin);
       }
@@ -31,14 +30,28 @@ const corsOptions = {
     }
   },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus:  200
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes - FIXED:  Use correct filenames
+// Health check - BEFORE migrations
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Todo API is running',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy' });
+});
+
+// Routes
 const authRoutes = require('./routes/authRoutes');
 const todoRoutes = require('./routes/todoRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -49,39 +62,26 @@ app.use('/api/todos', todoRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/attachments', attachmentRoutes);
 
-// Health check
-app.get('/', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'Todo API is running',
-    environment: process.env.NODE_ENV 
-  });
-});
-
 const PORT = process.env.PORT || 5000;
 
-// Start server
-async function startServer() {
+// Start server FIRST, then run migrations in background
+app.listen(PORT, async () => {
+  console.log(`\n🚀 Server running on port ${PORT}`);
+  console.log(`📍 http://localhost:${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  console.log(`✅ API Ready!\n`);
+  
+  // Run migrations in background (don't block server startup)
   try {
-    // Run migrations
-    console.log('Running database migrations...');
+    console.log('Running database migrations in background...');
+    const { runMigrations } = require('./runMigrations');
     await runMigrations();
+    console.log('✅ Migrations completed!\n');
     
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`\n🚀 Server running on port ${PORT}`);
-      console.log(`📍 http://localhost:${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-      console.log(`✅ API Ready!\n`);
-      
-      // Start recurring task scheduler
-      const { startRecurringTaskScheduler } = require('./utils/recurringTaskScheduler');
-      startRecurringTaskScheduler();
-    });
+    // Start recurring task scheduler after migrations
+    const { startRecurringTaskScheduler } = require('./utils/recurringTaskScheduler');
+    startRecurringTaskScheduler();
   } catch (error) {
-    console.error('❌ Failed to start server:', error. message);
-    process.exit(1);
+    console.error('⚠️  Migration failed, but server is running:', error. message);
   }
-}
-
-startServer();
+});
