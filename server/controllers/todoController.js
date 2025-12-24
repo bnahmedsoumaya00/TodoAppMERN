@@ -376,13 +376,16 @@ const toggleComplete = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     
+    console.log(`Toggling todo ${id} for user ${userId}`);
+    
     // Get todo
     const [todos] = await db.query(
-      'SELECT * FROM todos WHERE id = ? AND user_id = ? ',
+      'SELECT * FROM todos WHERE id = ? AND user_id = ?',
       [id, userId]
     );
     
     if (todos.length === 0) {
+      console.log('Todo not found');
       return res.status(404).json({
         success: false,
         error: 'Todo not found'
@@ -392,27 +395,26 @@ const toggleComplete = async (req, res) => {
     const todo = todos[0];
     const newCompletedStatus = !todo.completed;
     
-    // Update todo
+    console.log(`Toggling from ${todo.completed} to ${newCompletedStatus}`);
+    
+    // Update todo (without completed_at since column doesn't exist)
     await db.query(
       `UPDATE todos SET 
         completed = ?, 
-        completed_at = ?,
         updated_at = NOW()
       WHERE id = ? AND user_id = ?`,
       [
         newCompletedStatus,
-        newCompletedStatus ? new Date() : null,
         id,
         userId
       ]
     );
     
     // If marking parent as complete, mark all subtasks as complete
-    if (newCompletedStatus && ! todo.is_subtask) {
+    if (newCompletedStatus && !todo.is_subtask) {
       await db.query(
         `UPDATE todos SET 
           completed = TRUE, 
-          completed_at = NOW(),
           updated_at = NOW()
         WHERE parent_id = ? AND user_id = ?`,
         [id, userId]
@@ -425,14 +427,16 @@ const toggleComplete = async (req, res) => {
       [id]
     );
     
-    const [subtasks] = await db. query(
+    const [subtasks] = await db.query(
       'SELECT * FROM todos WHERE parent_id = ?',
       [id]
     );
     
-    updated[0]. subtasks = subtasks;
+    updated[0].subtasks = subtasks;
     updated[0].subtask_count = subtasks.length;
     updated[0].completed_subtasks = subtasks.filter(st => st.completed).length;
+    
+    console.log('Todo toggled successfully');
     
     res.json({
       success: true,
@@ -440,10 +444,16 @@ const toggleComplete = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Toggle todo error:', error);
+    console.error('Toggle todo error:', {
+      message: error.message,
+      code: error.code,
+      sqlMessage: error.sqlMessage
+    });
+    
     res.status(500).json({
       success: false,
-      error:  'Server error while toggling todo'
+      error: 'Server error while toggling todo',
+      details: error.message
     });
   }
 };
