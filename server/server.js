@@ -16,7 +16,7 @@ const corsOptions = {
       /^https:\/\/.*\.vercel\.app$/
     ];
     
-    const isAllowed = allowedOrigins.some(allowed => {
+    const isAllowed = allowedOrigins. some(allowed => {
       if (allowed instanceof RegExp) {
         return allowed.test(origin);
       }
@@ -30,14 +30,14 @@ const corsOptions = {
     }
   },
   credentials: true,
-  optionsSuccessStatus:  200
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check - BEFORE migrations
+// Health check
 app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -51,20 +51,20 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
 });
 
-// Routes
+// Routes - WITHOUT /api prefix
 const authRoutes = require('./routes/authRoutes');
 const todoRoutes = require('./routes/todoRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const attachmentRoutes = require('./routes/attachmentRoutes');
 
-app.use('/api/auth', authRoutes);
-app.use('/api/todos', todoRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/attachments', attachmentRoutes);
+app.use('/auth', authRoutes);           // ✅ /auth/register
+app.use('/todos', todoRoutes);          // ✅ /todos
+app.use('/categories', categoryRoutes); // ✅ /categories
+app.use('/attachments', attachmentRoutes); // ✅ /attachments
 
 const PORT = process.env.PORT || 5000;
 
-// Start server - bind to 0.0.0.0 for Railway
+// Start server
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
   console.log(`📍 Listening on 0.0.0.0:${PORT}`);
@@ -82,6 +82,6 @@ app.listen(PORT, '0.0.0.0', async () => {
     const { startRecurringTaskScheduler } = require('./utils/recurringTaskScheduler');
     startRecurringTaskScheduler();
   } catch (error) {
-    console.error('⚠️  Migration failed, but server is running:', error.message);
+    console.error('⚠️ Migration/scheduler error:', error.message);
   }
 });
