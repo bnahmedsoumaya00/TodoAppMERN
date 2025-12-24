@@ -17,10 +17,10 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 const corsOptions = {
-  origin: [
+  origin:  [
     'http://localhost:3000',
-    'https://*.vercel.app', // Allow all Vercel deployments
-    /^https:\/\/.*\.vercel\.app$/ // Regex for Vercel preview URLs
+    'https://todoappbysoumaya.vercel.app', // Your actual Vercel URL
+    'https://*.vercel.app' // Keep this for preview deployments
   ],
   credentials: true,
   optionsSuccessStatus: 200
