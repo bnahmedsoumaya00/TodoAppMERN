@@ -1,19 +1,23 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const db = require('./config/database');
+const { startRecurringTaskScheduler } = require('./utils/recurringTaskScheduler');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
-const todoRoutes = require('./routes/todoRoutes'); // ADD THIS
+const todoRoutes = require('./routes/todoRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const attachmentRoutes = require('./routes/attachmentRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: process.env. CORS_ORIGIN || 'http://localhost:5173',
   credentials: true
 }));
 app.use(express.json());
@@ -22,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 // Test route
 app.get('/', (req, res) => {
   res.json({ 
-    message: '🚀 Todo App API is running!',
+    message: '🚀 Todo App API is running! ',
     status: 'success',
     timestamp: new Date().toISOString()
   });
@@ -30,7 +34,12 @@ app.get('/', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/todos', todoRoutes); // ADD THIS
+app.use('/api/todos', todoRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/attachments', attachmentRoutes);
+
+// Serve uploaded files
+app.use('/uploads', express.static(path. join(__dirname, 'uploads')));
 
 // Health check route
 app.get('/api/health', async (req, res) => {
@@ -63,7 +72,7 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ 
     error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message: process.env.NODE_ENV === 'development' ? err.message :  undefined
   });
 });
 
@@ -73,5 +82,10 @@ app.listen(PORT, () => {
   console.log(`📍 http://localhost:${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
   console.log(`✅ Auth routes: http://localhost:${PORT}/api/auth`);
-  console.log(`✅ Todo routes: http://localhost:${PORT}/api/todos`); // ADD THIS
+  console.log(`✅ Todo routes: http://localhost:${PORT}/api/todos`);
+  console.log(`✅ Category routes: http://localhost:${PORT}/api/categories`);
+  console.log(`✅ Attachment routes: http://localhost:${PORT}/api/attachments`);
+  
+  // Start recurring task scheduler
+  startRecurringTaskScheduler();
 });

@@ -81,13 +81,13 @@ const Register = () => {
 
   const inputStyle = {
     width: '100%',
-    padding: '12px 16px',
+    padding: 'clamp(10px, 2.5vw, 16px)',
     paddingRight: '45px',
     background: '#0F0A1E',
     border: '1px solid #2d3748',
     borderRadius: '8px',
     color: '#ffffff',
-    fontSize: '16px',
+    fontSize: 'clamp(14px, 2vw, 16px)',
     outline: 'none'
   };
 
@@ -95,18 +95,18 @@ const Register = () => {
     display: 'block',
     marginBottom: '8px',
     color: '#8ea8c3',
-    fontSize: '14px',
+    fontSize: 'clamp(12px, 2vw, 14px)',
     fontWeight: '500'
   };
 
   const buttonStyle = {
     width: '100%',
-    padding: '14px',
+    padding: 'clamp(12px, 2.5vw, 16px)',
     background: '#cbf7ed',
     color: '#161925',
     border: 'none',
     borderRadius: '8px',
-    fontSize: '16px',
+    fontSize: 'clamp(14px, 2vw, 16px)',
     fontWeight: '600',
     cursor: 'pointer',
     display: 'flex',
@@ -136,23 +136,25 @@ const Register = () => {
       alignItems: 'center', 
       justifyContent: 'center',
       background: 'linear-gradient(135deg, #161925, #23395b)',
-      padding: '2rem'
+      padding: 'clamp(1rem, 4vw, 2rem)'
     }}>
       <div 
         className="animate-fade-in"
         style={{
-          maxWidth: '450px',
+          maxWidth: '500px',
           width: '100%',
           background: '#23395b',
           border: '1px solid #2d3748',
           borderRadius: '16px',
-          padding: '32px',
-          boxShadow: '0 10px 15px rgba(0, 0, 0, 0.4)'
+          padding: 'clamp(1.5rem, 5vw, 2.5rem)',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+          maxHeight: '90vh',
+          overflowY: 'auto'
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ 
-            fontSize: '32px', 
+            fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', 
             marginBottom: '8px',
             background: 'linear-gradient(135deg, #406e8e, #cbf7ed)',
             WebkitBackgroundClip: 'text',
@@ -161,7 +163,10 @@ const Register = () => {
           }}>
             Create Account
           </h1>
-          <p style={{ color: '#8ea8c3' }}>
+          <p style={{ 
+            color: '#8ea8c3',
+            fontSize: 'clamp(0.875rem, 2vw, 1rem)'
+          }}>
             Join us to manage your tasks
           </p>
         </div>
@@ -318,7 +323,10 @@ const Register = () => {
           paddingTop: '24px',
           borderTop: '1px solid #2d3748'
         }}>
-          <p style={{ color: '#8ea8c3', fontSize: '14px' }}>
+          <p style={{ 
+            color: '#8ea8c3', 
+            fontSize: 'clamp(0.875rem, 2vw, 1rem)'
+          }}>
             Already have an account?{' '}
             <Link 
               to="/login" 

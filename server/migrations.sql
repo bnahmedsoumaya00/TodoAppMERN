@@ -1,0 +1,27 @@
+USE todo_app;
+
+ALTER TABLE todos ADD COLUMN parent_id INT NULL;
+ALTER TABLE todos ADD COLUMN is_subtask BOOLEAN DEFAULT FALSE;
+ALTER TABLE todos ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE;
+ALTER TABLE todos ADD COLUMN recurrence_pattern VARCHAR(50) NULL;
+ALTER TABLE todos ADD COLUMN recurrence_interval INT DEFAULT 1;
+ALTER TABLE todos ADD COLUMN recurrence_end_date DATE NULL;
+ALTER TABLE todos ADD COLUMN last_recurrence_date DATE NULL;
+ALTER TABLE todos ADD COLUMN next_recurrence_date DATE NULL;
+
+CREATE TABLE IF NOT EXISTS attachments (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  todo_id INT NOT NULL,
+  user_id INT NOT NULL,
+  filename VARCHAR(255) NOT NULL,
+  original_filename VARCHAR(255) NOT NULL,
+  file_path VARCHAR(500) NOT NULL,
+  file_size INT NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+DESCRIBE todos;
+SHOW TABLES;

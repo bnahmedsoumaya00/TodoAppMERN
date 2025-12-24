@@ -1,15 +1,20 @@
 const db = require('../config/database');
 
-// @desc    Get all todos for current user
+// @desc    Get all todos for current user (including subtasks)
 // @route   GET /api/todos
 // @access  Private
 const getAllTodos = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { status, priority, category, search } = req.query;
+    const { status, priority, category, search, include_subtasks } = req.query;
     
     let query = 'SELECT * FROM todos WHERE user_id = ?';
     const params = [userId];
+    
+    // Only get parent todos (not subtasks) by default
+    if (include_subtasks !== 'true') {
+      query += ' AND (parent_id IS NULL OR parent_id = 0)';
+    }
     
     // Filter by status
     if (status === 'active') {
@@ -41,7 +46,18 @@ const getAllTodos = async (req, res) => {
     
     const [todos] = await db.query(query, params);
     
-    res.json({
+    // For each todo, get its subtasks
+    for (let todo of todos) {
+      const [subtasks] = await db.query(
+        'SELECT * FROM todos WHERE parent_id = ? ORDER BY created_at ASC',
+        [todo.id]
+      );
+      todo.subtasks = subtasks;
+      todo.subtask_count = subtasks.length;
+      todo.completed_subtasks = subtasks.filter(st => st.completed).length;
+    }
+    
+    res. json({
       success: true,
       count: todos.length,
       data: todos
@@ -56,7 +72,7 @@ const getAllTodos = async (req, res) => {
   }
 };
 
-// @desc    Get single todo
+// @desc    Get single todo with subtasks
 // @route   GET /api/todos/:id
 // @access  Private
 const getTodoById = async (req, res) => {
@@ -65,7 +81,7 @@ const getTodoById = async (req, res) => {
     const userId = req.user.id;
     
     const [todos] = await db.query(
-      'SELECT * FROM todos WHERE id = ? AND user_id = ?',
+      'SELECT * FROM todos WHERE id = ? AND user_id = ? ',
       [id, userId]
     );
     
@@ -76,9 +92,21 @@ const getTodoById = async (req, res) => {
       });
     }
     
+    const todo = todos[0];
+    
+    // Get subtasks
+    const [subtasks] = await db.query(
+      'SELECT * FROM todos WHERE parent_id = ? ORDER BY created_at ASC',
+      [id]
+    );
+    
+    todo.subtasks = subtasks;
+    todo.subtask_count = subtasks.length;
+    todo.completed_subtasks = subtasks.filter(st => st. completed).length;
+    
     res.json({
       success: true,
-      data: todos[0]
+      data: todo
     });
     
   } catch (error) {
@@ -90,13 +118,13 @@ const getTodoById = async (req, res) => {
   }
 };
 
-// @desc    Create new todo
+// @desc    Create new todo (or subtask)
 // @route   POST /api/todos
 // @access  Private
 const createTodo = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { title, description, priority, category, due_date } = req.body;
+    const { title, description, priority, category, due_date, parent_id } = req.body;
     
     // Validate required fields
     if (!title || title.trim() === '') {
@@ -106,29 +134,46 @@ const createTodo = async (req, res) => {
       });
     }
     
+    // If parent_id is provided, verify it exists and belongs to user
+    if (parent_id) {
+      const [parentTodos] = await db.query(
+        'SELECT id FROM todos WHERE id = ? AND user_id = ?',
+        [parent_id, userId]
+      );
+      
+      if (parentTodos.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Parent todo not found'
+        });
+      }
+    }
+    
     const [result] = await db.query(
-      `INSERT INTO todos (user_id, title, description, priority, category, due_date) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO todos (user_id, title, description, priority, category, due_date, parent_id, is_subtask) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
-        title.trim(),
+        title. trim(),
         description || null,
         priority || 'medium',
         category || 'general',
-        due_date || null
+        due_date || null,
+        parent_id || null,
+        parent_id ? true : false
       ]
     );
     
     // Get the created todo
     const [todos] = await db.query(
-      'SELECT * FROM todos WHERE id = ?',
+      'SELECT * FROM todos WHERE id = ? ',
       [result.insertId]
     );
     
     res.status(201).json({
       success: true,
-      message: 'Todo created successfully',
-      data: todos[0]
+      message: parent_id ? 'Subtask created successfully' : 'Todo created successfully',
+      data:  todos[0]
     });
     
   } catch (error) {
@@ -147,48 +192,64 @@ const updateTodo = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const { title, description, priority, category, due_date, completed } = req.body;
+    const { title, description, priority, category, due_date } = req.body;
     
     // Check if todo exists and belongs to user
-    const [existing] = await db.query(
-      'SELECT * FROM todos WHERE id = ? AND user_id = ?',
+    const [todos] = await db.query(
+      'SELECT * FROM todos WHERE id = ? AND user_id = ? ',
       [id, userId]
     );
     
-    if (existing.length === 0) {
+    if (todos.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Todo not found'
       });
     }
     
+    const todo = todos[0];
+    
     // Update todo
     await db.query(
-      `UPDATE todos 
-       SET title = ?, description = ?, priority = ?, category = ?, due_date = ?, completed = ?
-       WHERE id = ? AND user_id = ?`,
+      `UPDATE todos SET 
+        title = ?, 
+        description = ?, 
+        priority = ?, 
+        category = ?, 
+        due_date = ?,
+        updated_at = NOW()
+      WHERE id = ? AND user_id = ?`,
       [
-        title || existing[0].title,
-        description !== undefined ? description : existing[0].description,
-        priority || existing[0].priority,
-        category || existing[0].category,
-        due_date !== undefined ? due_date : existing[0].due_date,
-        completed !== undefined ? completed : existing[0].completed,
+        title || todo.title,
+        description !== undefined ? description : todo.description,
+        priority || todo.priority,
+        category || todo.category,
+        due_date !== undefined ? due_date :  todo.due_date,
         id,
         userId
       ]
     );
     
     // Get updated todo
-    const [todos] = await db.query(
-      'SELECT * FROM todos WHERE id = ?',
+    const [updated] = await db.query(
+      'SELECT * FROM todos WHERE id = ? ',
       [id]
     );
+    
+    // Get subtasks
+    const [subtasks] = await db.query(
+      'SELECT * FROM todos WHERE parent_id = ? ',
+      [id]
+    );
+    
+    updated[0].subtasks = subtasks;
+    updated[0].subtask_count = subtasks.length;
+    updated[0].completed_subtasks = subtasks.filter(st => st.completed).length;
     
     res.json({
       success: true,
       message: 'Todo updated successfully',
-      data: todos[0]
+      data: updated[0]
     });
     
   } catch (error) {
@@ -200,27 +261,28 @@ const updateTodo = async (req, res) => {
   }
 };
 
-// @desc    Delete todo
+// @desc    Delete todo (and its subtasks)
 // @route   DELETE /api/todos/:id
 // @access  Private
 const deleteTodo = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req. params;
     const userId = req.user.id;
     
     // Check if todo exists and belongs to user
-    const [existing] = await db.query(
+    const [todos] = await db.query(
       'SELECT * FROM todos WHERE id = ? AND user_id = ?',
       [id, userId]
     );
     
-    if (existing.length === 0) {
+    if (todos.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Todo not found'
       });
     }
     
+    // Delete todo (cascade will delete subtasks)
     await db.query(
       'DELETE FROM todos WHERE id = ? AND user_id = ?',
       [id, userId]
@@ -248,44 +310,74 @@ const toggleComplete = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     
-    // Check if todo exists and belongs to user
-    const [existing] = await db.query(
-      'SELECT * FROM todos WHERE id = ? AND user_id = ?',
+    // Get todo
+    const [todos] = await db.query(
+      'SELECT * FROM todos WHERE id = ? AND user_id = ? ',
       [id, userId]
     );
     
-    if (existing.length === 0) {
+    if (todos.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Todo not found'
       });
     }
     
-    const newCompleted = !existing[0].completed;
-    const completedAt = newCompleted ? new Date() : null;
+    const todo = todos[0];
+    const newCompletedStatus = !todo.completed;
     
+    // Update todo
     await db.query(
-      'UPDATE todos SET completed = ?, completed_at = ? WHERE id = ? AND user_id = ?',
-      [newCompleted, completedAt, id, userId]
+      `UPDATE todos SET 
+        completed = ?, 
+        completed_at = ?,
+        updated_at = NOW()
+      WHERE id = ? AND user_id = ?`,
+      [
+        newCompletedStatus,
+        newCompletedStatus ? new Date() : null,
+        id,
+        userId
+      ]
     );
     
-    // Get updated todo
-    const [todos] = await db.query(
+    // If marking parent as complete, mark all subtasks as complete
+    if (newCompletedStatus && ! todo.is_subtask) {
+      await db.query(
+        `UPDATE todos SET 
+          completed = TRUE, 
+          completed_at = NOW(),
+          updated_at = NOW()
+        WHERE parent_id = ? AND user_id = ?`,
+        [id, userId]
+      );
+    }
+    
+    // Get updated todo with subtasks
+    const [updated] = await db.query(
       'SELECT * FROM todos WHERE id = ?',
       [id]
     );
     
+    const [subtasks] = await db. query(
+      'SELECT * FROM todos WHERE parent_id = ?',
+      [id]
+    );
+    
+    updated[0]. subtasks = subtasks;
+    updated[0].subtask_count = subtasks.length;
+    updated[0].completed_subtasks = subtasks.filter(st => st.completed).length;
+    
     res.json({
       success: true,
-      message: `Todo marked as ${newCompleted ? 'completed' : 'active'}`,
-      data: todos[0]
+      data: updated[0]
     });
     
   } catch (error) {
     console.error('Toggle todo error:', error);
     res.status(500).json({
       success: false,
-      error: 'Server error while toggling todo'
+      error:  'Server error while toggling todo'
     });
   }
 };
@@ -297,37 +389,37 @@ const getTodoStats = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // Total todos
-    const [total] = await db.query(
-      'SELECT COUNT(*) as count FROM todos WHERE user_id = ?',
+    // Get total todos (excluding subtasks)
+    const [totalResult] = await db.query(
+      'SELECT COUNT(*) as count FROM todos WHERE user_id = ?  AND (parent_id IS NULL OR parent_id = 0)',
       [userId]
     );
     
-    // Completed todos
-    const [completed] = await db.query(
-      'SELECT COUNT(*) as count FROM todos WHERE user_id = ? AND completed = TRUE',
+    // Get completed todos
+    const [completedResult] = await db.query(
+      'SELECT COUNT(*) as count FROM todos WHERE user_id = ?  AND completed = TRUE AND (parent_id IS NULL OR parent_id = 0)',
       [userId]
     );
     
-    // Active todos
-    const [active] = await db.query(
-      'SELECT COUNT(*) as count FROM todos WHERE user_id = ? AND completed = FALSE',
+    // Get active todos
+    const [activeResult] = await db.query(
+      'SELECT COUNT(*) as count FROM todos WHERE user_id = ? AND completed = FALSE AND (parent_id IS NULL OR parent_id = 0)',
       [userId]
     );
     
-    // Overdue todos
-    const [overdue] = await db.query(
-      'SELECT COUNT(*) as count FROM todos WHERE user_id = ? AND completed = FALSE AND due_date < CURDATE()',
+    // Get overdue todos
+    const [overdueResult] = await db.query(
+      'SELECT COUNT(*) as count FROM todos WHERE user_id = ? AND completed = FALSE AND due_date < NOW() AND (parent_id IS NULL OR parent_id = 0)',
       [userId]
     );
     
     res.json({
       success: true,
       data: {
-        total: total[0].count,
-        completed: completed[0].count,
-        active: active[0].count,
-        overdue: overdue[0].count
+        total: totalResult[0].count,
+        completed: completedResult[0].count,
+        active: activeResult[0].count,
+        overdue: overdueResult[0].count
       }
     });
     
@@ -335,7 +427,7 @@ const getTodoStats = async (req, res) => {
     console.error('Get stats error:', error);
     res.status(500).json({
       success: false,
-      error: 'Server error while fetching statistics'
+      error:  'Server error while fetching statistics'
     });
   }
 };
