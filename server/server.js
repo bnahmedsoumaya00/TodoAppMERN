@@ -1,27 +1,35 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-require('dotenv').config();
+const dotenv = require('dotenv');
+const { runMigrations } = require('./runMigrations');
 
-const db = require('./config/database');
-const { startRecurringTaskScheduler } = require('./utils/recurringTaskScheduler');
-
-// Import routes
-const authRoutes = require('./routes/authRoutes');
-const todoRoutes = require('./routes/todoRoutes');
-const categoryRoutes = require('./routes/categoryRoutes');
-const attachmentRoutes = require('./routes/attachmentRoutes');
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// Middleware
 const corsOptions = {
-  origin:  [
-    'http://localhost:3000',
-    'https://todoappbysoumaya.vercel.app', // Your actual Vercel URL
-    'https://*.vercel.app' // Keep this for preview deployments
-  ],
+  origin:  function(origin, callback) {
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://todoappmern.vercel.app',
+      /^https:\/\/.*\.vercel\.app$/
+    ];
+    
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return allowed === origin;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -30,69 +38,52 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Test route
-app.get('/', (req, res) => {
-  res.json({ 
-    message: '🚀 Todo App API is running! ',
-    status: 'success',
-    timestamp: new Date().toISOString()
-  });
-});
-
 // Routes
+const authRoutes = require('./routes/auth');
+const todoRoutes = require('./routes/todos');
+const categoryRoutes = require('./routes/categories');
+const attachmentRoutes = require('./routes/attachments');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/todos', todoRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/attachments', attachmentRoutes);
 
-// Serve uploaded files
-app.use('/uploads', express.static(path. join(__dirname, 'uploads')));
+// Health check
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Todo API is running',
+    environment: process.env.NODE_ENV 
+  });
+});
 
-// Health check route
-app.get('/api/health', async (req, res) => {
+const PORT = process.env.PORT || 5000;
+
+// Run migrations and start server
+async function startServer() {
   try {
-    const [rows] = await db.query('SELECT 1');
-    res.json({ 
-      status: 'healthy',
-      database: 'connected',
-      timestamp: new Date().toISOString()
+    // Run migrations first
+    await runMigrations();
+    
+    // Start server
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📍 http://localhost:${PORT}`);
+      console.log(`🌍 Environment: ${process.env. NODE_ENV}`);
+      console.log(`✅ Auth routes: http://localhost:${PORT}/api/auth`);
+      console.log(`✅ Todo routes: http://localhost:${PORT}/api/todos`);
+      console.log(`✅ Category routes: http://localhost:${PORT}/api/categories`);
+      console.log(`✅ Attachment routes: http://localhost:${PORT}/api/attachments`);
+      
+      // Start recurring task scheduler
+      const { startRecurringTaskScheduler } = require('./utils/recurringTaskScheduler');
+      startRecurringTaskScheduler();
     });
   } catch (error) {
-    res.status(500).json({ 
-      status: 'unhealthy',
-      database: 'disconnected',
-      error: error.message
-    });
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
   }
-});
+}
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Route not found',
-    path: req.path 
-  });
-});
-
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message :  undefined
-  });
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📍 http://localhost:${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-  console.log(`✅ Auth routes: http://localhost:${PORT}/api/auth`);
-  console.log(`✅ Todo routes: http://localhost:${PORT}/api/todos`);
-  console.log(`✅ Category routes: http://localhost:${PORT}/api/categories`);
-  console.log(`✅ Attachment routes: http://localhost:${PORT}/api/attachments`);
-  
-  // Start recurring task scheduler
-  startRecurringTaskScheduler();
-});
+startServer();
