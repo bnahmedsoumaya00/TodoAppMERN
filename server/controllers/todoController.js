@@ -123,11 +123,26 @@ const getTodoById = async (req, res) => {
 // @access  Private
 const createTodo = async (req, res) => {
   try {
+    console.log('📝 Create todo request received');
+    console.log('Request body:', req.body);
+    console.log('User ID:', req.user?.id);
+    
     const userId = req.user.id;
     const { title, description, priority, category, due_date, parent_id } = req.body;
     
+    console.log('Parsed values:', {
+      userId,
+      title,
+      description,
+      priority: priority || 'medium',
+      category: category || 'general',
+      due_date: due_date || null,
+      parent_id: parent_id || null
+    });
+    
     // Validate required fields
     if (!title || title.trim() === '') {
+      console.log('❌ Validation failed: title is required');
       return res.status(400).json({
         success: false,
         error: 'Title is required'
@@ -136,12 +151,14 @@ const createTodo = async (req, res) => {
     
     // If parent_id is provided, verify it exists and belongs to user
     if (parent_id) {
+      console.log('Checking parent todo:', parent_id);
       const [parentTodos] = await db.query(
         'SELECT id FROM todos WHERE id = ? AND user_id = ?',
         [parent_id, userId]
       );
       
       if (parentTodos.length === 0) {
+        console.log('❌ Parent todo not found');
         return res.status(404).json({
           success: false,
           error: 'Parent todo not found'
@@ -149,12 +166,14 @@ const createTodo = async (req, res) => {
       }
     }
     
+    console.log('✅ Validation passed, inserting into database...');
+    
     const [result] = await db.query(
       `INSERT INTO todos (user_id, title, description, priority, category, due_date, parent_id, is_subtask) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
-        title. trim(),
+        title.trim(),
         description || null,
         priority || 'medium',
         category || 'general',
@@ -164,23 +183,37 @@ const createTodo = async (req, res) => {
       ]
     );
     
+    console.log('✅ Todo inserted with ID:', result.insertId);
+    
     // Get the created todo
     const [todos] = await db.query(
-      'SELECT * FROM todos WHERE id = ? ',
+      'SELECT * FROM todos WHERE id = ?',
       [result.insertId]
     );
+    
+    console.log('✅ Todo created successfully:', todos[0]);
     
     res.status(201).json({
       success: true,
       message: parent_id ? 'Subtask created successfully' : 'Todo created successfully',
-      data:  todos[0]
+      data: todos[0]
     });
     
   } catch (error) {
-    console.error('Create todo error:', error);
+    console.error('❌ Create todo error - Full details:', {
+      message: error.message,
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage,
+      sql: error.sql,
+      stack: error.stack
+    });
+    
     res.status(500).json({
       success: false,
-      error: 'Server error while creating todo'
+      error: 'Server error while creating todo',
+      details: process.env.NODE_ENV === 'production' ? undefined : error.message
     });
   }
 };
