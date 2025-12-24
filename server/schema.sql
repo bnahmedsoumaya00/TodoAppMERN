@@ -1,5 +1,11 @@
+-- Drop existing tables in correct order (respecting foreign keys)
+DROP TABLE IF EXISTS attachments;
+DROP TABLE IF EXISTS todos;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
+
 -- Users table
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
   email VARCHAR(100) UNIQUE NOT NULL,
@@ -14,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Categories table
-CREATE TABLE IF NOT EXISTS categories (
+CREATE TABLE categories (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   name VARCHAR(50) NOT NULL,
@@ -26,7 +32,7 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 -- Todos table
-CREATE TABLE IF NOT EXISTS todos (
+CREATE TABLE todos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
@@ -54,7 +60,7 @@ CREATE TABLE IF NOT EXISTS todos (
 );
 
 -- Attachments table
-CREATE TABLE IF NOT EXISTS attachments (
+CREATE TABLE attachments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   todo_id INT NOT NULL,
   filename VARCHAR(255) NOT NULL,
