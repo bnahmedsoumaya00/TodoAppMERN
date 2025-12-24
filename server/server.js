@@ -92,6 +92,43 @@ app.get('/test-db', async (req, res) => {
   }
 });
 
+// Add this test endpoint after /test-db
+app.get('/test-create-todo', async (req, res) => {
+  try {
+    const db = require('./config/database');
+    
+    // Try to insert a test todo
+    const [result] = await db.query(
+      `INSERT INTO todos (user_id, title, description, priority, category, due_date, parent_id, is_subtask) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        1, // Test user ID
+        'Test Todo',
+        'Test description',
+        'medium',
+        'general',
+        null,
+        null,
+        false
+      ]
+    );
+    
+    res.json({ 
+      status: 'ok',
+      message: 'Test todo created',
+      insertId: result.insertId
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error',
+      message: error.message,
+      code: error.code,
+      errno: error.errno,
+      sqlMessage: error.sqlMessage
+    });
+  }
+});
+
 // Load routes with error handling
 console.log('📦 Loading routes...');
 
