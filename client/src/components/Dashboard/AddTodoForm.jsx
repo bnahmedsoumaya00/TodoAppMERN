@@ -3,7 +3,7 @@ import { useTodos } from '../../context/TodoContext';
 import { useCategories } from '../../context/CategoryContext';
 import { 
   Plus, X, Calendar, Flag, FolderOpen, FileText, 
-  Repeat, Upload, Paperclip, ChevronDown, AlertCircle
+  Repeat, Upload, Paperclip, ChevronDown, AlertCircle, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../UI/Button';
@@ -272,49 +272,95 @@ const AddTodoForm = () => {
           {/* Category & Due Date */}
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns:  window.innerWidth < 640 ? '1fr' : '1fr 1fr',
+            gridTemplateColumns: window.innerWidth < 640 ? '1fr' : '1fr 1fr',
             gap: '0.75rem',
             marginBottom: '1rem'
           }}>
-            {/* Category */}
-            <div style={{ position: 'relative' }}>
-              <select
-                name="category"
-                value={formData. category}
-                onChange={handleChange}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 2. 5rem 0.75rem 1rem',
-                  background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-primary)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  appearance: 'none',
-                  transition: 'all var(--transition-base)'
-                }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--border-accent)'}
-                onBlur={(e) => e.target.style.borderColor = 'var(--border-primary)'}
-              >
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.name. toLowerCase()}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown 
-                size={16} 
-                style={{
-                  position:  'absolute',
-                  right: '0.75rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--text-muted)',
-                  pointerEvents: 'none'
-                }}
-              />
+            {/* Category - Enhanced */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: 'var(--text-secondary)',
+                marginBottom: '0.5rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                Category
+              </label>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+                gap: '0.5rem'
+              }}>
+                {categories.map((cat) => {
+                  const isSelected = formData.category === cat.name.toLowerCase();
+                  return (
+                    <motion.button
+                      key={cat.id}
+                      type="button"
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setFormData({ ...formData, category: cat.name.toLowerCase() })}
+                      style={{
+                        padding: '0.75rem 0.5rem',
+                        background: isSelected 
+                          ? 'linear-gradient(135deg, var(--bg-accent) 0%, var(--bg-accent-dark, var(--bg-accent)) 100%)'
+                          : 'var(--bg-tertiary)',
+                        border: `1px solid ${isSelected ? 'var(--border-accent)' : 'var(--border-primary)'}`,
+                        borderRadius: 'var(--radius-md)',
+                        color: isSelected ? 'white' : 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        fontSize: '0.8125rem',
+                        fontWeight: isSelected ? '600' : '500',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        boxShadow: isSelected 
+                          ? '0 4px 12px rgba(59, 130, 246, 0.3), 0 1px 3px rgba(0, 0, 0, 0.1)'
+                          : '0 1px 2px rgba(0, 0, 0, 0.05)'
+                      }}
+                    >
+                      {isSelected && (
+                        <motion.div
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            width: '16px',
+                            height: '16px',
+                            background: 'rgba(255, 255, 255, 0.3)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Check size={10} strokeWidth={3} />
+                        </motion.div>
+                      )}
+                      <FolderOpen size={18} style={{ opacity: 0.8 }} />
+                      <span style={{ 
+                        fontSize: '0.75rem',
+                        textAlign: 'center',
+                        lineHeight: '1.2',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {cat.name}
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Due Date */}
