@@ -13,7 +13,7 @@ const corsOptions = {
     
     const allowedOrigins = [
       'http://localhost:3000',
-      'https://todoappmern.vercel.app',
+      'https://todoappbysoumaya.vercel.app',
       /^https:\/\/.*\.vercel\.app$/
     ];
     
