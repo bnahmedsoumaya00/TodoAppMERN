@@ -1,35 +1,33 @@
--- ========================================
--- CREATE USERS TABLE
--- ========================================
+-- Users table
 CREATE TABLE IF NOT EXISTS users (
-  id INT PRIMARY KEY AUTO_INCREMENT,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
   email VARCHAR(100) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
   full_name VARCHAR(100),
+  is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  last_login TIMESTAMP NULL,
+  INDEX idx_email (email),
+  INDEX idx_username (username)
 );
 
--- ========================================
--- CREATE CATEGORIES TABLE
--- ========================================
+-- Categories table
 CREATE TABLE IF NOT EXISTS categories (
-  id INT PRIMARY KEY AUTO_INCREMENT,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
-  name VARCHAR(100) NOT NULL,
-  color VARCHAR(20) DEFAULT '#6366f1',
-  icon VARCHAR(50) DEFAULT 'folder',
+  name VARCHAR(50) NOT NULL,
+  color VARCHAR(7) DEFAULT '#3b82f6',
+  icon VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE KEY unique_user_category (user_id, name)
 );
 
--- ========================================
--- CREATE TODOS TABLE
--- ========================================
+-- Todos table
 CREATE TABLE IF NOT EXISTS todos (
-  id INT PRIMARY KEY AUTO_INCREMENT,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
   description TEXT,
@@ -39,51 +37,32 @@ CREATE TABLE IF NOT EXISTS todos (
   due_date DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  parent_id INT NULL,
+  parent_id INT,
   is_subtask BOOLEAN DEFAULT FALSE,
   is_recurring BOOLEAN DEFAULT FALSE,
-  recurrence_pattern VARCHAR(50) NULL,
+  recurrence_pattern VARCHAR(50),
   recurrence_interval INT DEFAULT 1,
-  recurrence_end_date DATE NULL,
-  last_recurrence_date DATE NULL,
-  next_recurrence_date DATE NULL,
+  recurrence_end_date DATE,
+  last_recurrence_date DATE,
+  next_recurrence_date DATE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (parent_id) REFERENCES todos(id) ON DELETE CASCADE,
-  INDEX idx_todos_user_id (user_id),
-  INDEX idx_todos_parent_id (parent_id),
-  INDEX idx_todos_recurring (is_recurring, next_recurrence_date)
+  INDEX idx_user_id (user_id),
+  INDEX idx_completed (completed),
+  INDEX idx_due_date (due_date),
+  INDEX idx_parent_id (parent_id)
 );
 
--- ========================================
--- CREATE ATTACHMENTS TABLE
--- ========================================
+-- Attachments table
 CREATE TABLE IF NOT EXISTS attachments (
-  id INT PRIMARY KEY AUTO_INCREMENT,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   todo_id INT NOT NULL,
-  user_id INT NOT NULL,
   filename VARCHAR(255) NOT NULL,
-  original_filename VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
   file_path VARCHAR(500) NOT NULL,
-  file_size INT NOT NULL,
-  mime_type VARCHAR(100) NOT NULL,
+  file_size INT,
+  mime_type VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  INDEX idx_attachments_todo_id (todo_id),
-  INDEX idx_attachments_user_id (user_id)
+  INDEX idx_todo_id (todo_id)
 );
-
--- ========================================
--- ADD INDEX TO CATEGORIES (if table exists)
--- ========================================
--- Note:  Indexes are created inline above, but this handles existing tables
-SET @exist := (SELECT COUNT(*) FROM information_schema.statistics 
-               WHERE table_schema = DATABASE() 
-               AND table_name = 'categories' 
-               AND index_name = 'idx_categories_user_id');
-SET @sqlstmt := IF(@exist = 0, 
-                   'CREATE INDEX idx_categories_user_id ON categories(user_id)', 
-                   'SELECT ''Index already exists'' AS message');
-PREPARE stmt FROM @sqlstmt;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
