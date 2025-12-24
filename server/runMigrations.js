@@ -7,74 +7,68 @@ async function runMigrations() {
   let connection;
   
   try {
-    console.log('🚀 Starting database migrations...\n');
+    console.log('🚀 Starting database migrations...');
     
-    // Connect to MySQL
+    // Create connection
     connection = await mysql.createConnection({
-      host: process.env.DB_HOST || process.env. MYSQLHOST || 'localhost',
-      user: process.env. DB_USER || process.env. MYSQLUSER || 'root',
-      password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
-      database: process.env. DB_NAME || process.env. MYSQLDATABASE || 'todo_app',
-      port: process.env.DB_PORT || process.env.MYSQLPORT || 3306,
-      multipleStatements: true // Allow multiple SQL statements
+      host: process.env. MYSQLHOST || process.env.DB_HOST,
+      user: process.env. MYSQLUSER || process.env. DB_USER,
+      password:  process.env.MYSQLPASSWORD || process.env.DB_PASSWORD,
+      database: process. env.MYSQLDATABASE || process.env.DB_NAME,
+      port: process.env.MYSQLPORT || process.env.DB_PORT || 3306
     });
-
-    console.log('✅ Connected to database\n');
-
-    // Read SQL file
+    
+    console.log('✅ Database connected successfully!');
+    
+    // Read and execute schema
     const schemaPath = path.join(__dirname, 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
-
-    console.log('📄 Executing schema. sql...\n');
-
-    // Execute all SQL statements
-    await connection.query(schema);
-
-    console.log('✅ Schema executed successfully!\n');
-
-    // Show tables
-    console.log('📋 Database Tables: ');
+    
+    console.log('📄 Executing schema. sql...');
+    
+    const statements = schema
+      .split(';')
+      .map(stmt => stmt.trim())
+      .filter(stmt => stmt. length > 0);
+    
+    for (const statement of statements) {
+      await connection.query(statement);
+    }
+    
+    console.log('✅ Schema executed successfully!');
+    
+    // Show all tables
     const [tables] = await connection.query('SHOW TABLES');
+    console.log('📋 Database Tables:');
     console.table(tables);
-
+    
+    // Show users table structure
+    const [usersColumns] = await connection.query('DESCRIBE users');
+    console.log('👤 Users Table Structure:');
+    console.table(usersColumns);
+    
     // Show todos table structure
-    console.log('\n📋 Todos Table Structure:');
-    const [columns] = await connection.query('DESCRIBE todos');
-    console.table(columns. map(col => ({
-      Field: col.Field,
-      Type: col.Type,
-      Null: col.Null,
-      Key: col.Key,
-      Default: col.Default
-    })));
-
-    console.log('\n🎉 All migrations completed successfully!\n');
-
+    const [todosColumns] = await connection.query('DESCRIBE todos');
+    console.log('📋 Todos Table Structure:');
+    console.table(todosColumns);
+    
+    console.log('🎉 All migrations completed successfully!');
+    
   } catch (error) {
-    console.error('\n❌ Migration failed: ');
-    console.error('Error:', error.message);
-    if (error.code) console.error('Code:', error.code);
-    if (error.sqlMessage) console.error('SQL Message:', error.sqlMessage);
+    console.error('❌ Migration failed:', error. message);
     throw error;
   } finally {
     if (connection) {
       await connection.end();
-      console.log('✅ Database connection closed\n');
+      console.log('✅ Database connection closed');
     }
   }
 }
 
-// Run if called directly
+module.exports = { runMigrations };
+
 if (require.main === module) {
   runMigrations()
-    .then(() => {
-      console.log('✅ Migration script completed');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('❌ Migration script failed:', error.message);
-      process.exit(1);
-    });
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
 }
-
-module.exports = { runMigrations };
