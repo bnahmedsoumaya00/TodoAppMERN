@@ -64,24 +64,24 @@ app.use('/api/attachments', attachmentRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-// Start server FIRST, then run migrations in background
-app.listen(PORT, async () => {
+// Start server - bind to 0.0.0.0 for Railway
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
-  console.log(`📍 http://localhost:${PORT}`);
+  console.log(`📍 Listening on 0.0.0.0:${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
   console.log(`✅ API Ready!\n`);
   
-  // Run migrations in background (don't block server startup)
+  // Run migrations in background
   try {
     console.log('Running database migrations in background...');
     const { runMigrations } = require('./runMigrations');
     await runMigrations();
     console.log('✅ Migrations completed!\n');
     
-    // Start recurring task scheduler after migrations
+    // Start recurring task scheduler
     const { startRecurringTaskScheduler } = require('./utils/recurringTaskScheduler');
     startRecurringTaskScheduler();
   } catch (error) {
-    console.error('⚠️  Migration failed, but server is running:', error. message);
+    console.error('⚠️  Migration failed, but server is running:', error.message);
   }
 });
