@@ -2,8 +2,6 @@
 
 A full-stack todo application with a beautiful dark theme, built with the MERN stack. Features secure authentication, real-time task management, and a responsive design.
 
-[![Live Demo](https://img.shields.io/badge/Demo-Live-success? style=for-the-badge)](https://todoappbysoumaya.vercel.app)
-[![Status](https://img.shields.io/badge/Status-Production-green? style=for-the-badge)]()
 
 ## ✨ Features
 
