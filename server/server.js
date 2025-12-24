@@ -16,10 +16,17 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors({
-  origin: process.env. CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true
-}));
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'https://*.vercel.app', // Allow all Vercel deployments
+    /^https:\/\/.*\.vercel\.app$/ // Regex for Vercel preview URLs
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
