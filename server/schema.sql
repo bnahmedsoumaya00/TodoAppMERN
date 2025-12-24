@@ -1,13 +1,4 @@
 -- ========================================
--- DROP EXISTING TABLES (if needed)
--- ========================================
--- Uncomment these if you want to start fresh
--- DROP TABLE IF EXISTS attachments;
--- DROP TABLE IF EXISTS todos;
--- DROP TABLE IF EXISTS categories;
--- DROP TABLE IF EXISTS users;
-
--- ========================================
 -- CREATE USERS TABLE
 -- ========================================
 CREATE TABLE IF NOT EXISTS users (
@@ -48,21 +39,19 @@ CREATE TABLE IF NOT EXISTS todos (
   due_date DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  
-  -- Subtask fields
   parent_id INT NULL,
   is_subtask BOOLEAN DEFAULT FALSE,
-  
-  -- Recurring task fields
   is_recurring BOOLEAN DEFAULT FALSE,
   recurrence_pattern VARCHAR(50) NULL,
   recurrence_interval INT DEFAULT 1,
   recurrence_end_date DATE NULL,
   last_recurrence_date DATE NULL,
   next_recurrence_date DATE NULL,
-  
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (parent_id) REFERENCES todos(id) ON DELETE CASCADE
+  FOREIGN KEY (parent_id) REFERENCES todos(id) ON DELETE CASCADE,
+  INDEX idx_todos_user_id (user_id),
+  INDEX idx_todos_parent_id (parent_id),
+  INDEX idx_todos_recurring (is_recurring, next_recurrence_date)
 );
 
 -- ========================================
@@ -79,15 +68,22 @@ CREATE TABLE IF NOT EXISTS attachments (
   mime_type VARCHAR(100) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_attachments_todo_id (todo_id),
+  INDEX idx_attachments_user_id (user_id)
 );
 
 -- ========================================
--- CREATE INDEXES
+-- ADD INDEX TO CATEGORIES (if table exists)
 -- ========================================
-CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
-CREATE INDEX IF NOT EXISTS idx_todos_parent_id ON todos(parent_id);
-CREATE INDEX IF NOT EXISTS idx_todos_recurring ON todos(is_recurring, next_recurrence_date);
-CREATE INDEX IF NOT EXISTS idx_categories_user_id ON categories(user_id);
-CREATE INDEX IF NOT EXISTS idx_attachments_todo_id ON attachments(todo_id);
-CREATE INDEX IF NOT EXISTS idx_attachments_user_id ON attachments(user_id);
+-- Note:  Indexes are created inline above, but this handles existing tables
+SET @exist := (SELECT COUNT(*) FROM information_schema.statistics 
+               WHERE table_schema = DATABASE() 
+               AND table_name = 'categories' 
+               AND index_name = 'idx_categories_user_id');
+SET @sqlstmt := IF(@exist = 0, 
+                   'CREATE INDEX idx_categories_user_id ON categories(user_id)', 
+                   'SELECT ''Index already exists'' AS message');
+PREPARE stmt FROM @sqlstmt;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
