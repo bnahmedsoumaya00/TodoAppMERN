@@ -51,16 +51,53 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
 });
 
-// Routes - WITHOUT /api prefix
-const authRoutes = require('./routes/authRoutes');
-const todoRoutes = require('./routes/todoRoutes');
-const categoryRoutes = require('./routes/categoryRoutes');
-const attachmentRoutes = require('./routes/attachmentRoutes');
+// Load routes with error handling
+console.log('📦 Loading routes...');
 
-app.use('/auth', authRoutes);           // ✅ /auth/register
-app.use('/todos', todoRoutes);          // ✅ /todos
-app.use('/categories', categoryRoutes); // ✅ /categories
-app.use('/attachments', attachmentRoutes); // ✅ /attachments
+try {
+  const authRoutes = require('./routes/authRoutes');
+  app.use('/auth', authRoutes);
+  console.log('✅ Auth routes loaded at /auth');
+} catch (error) {
+  console.error('❌ Failed to load auth routes:', error.message);
+}
+
+try {
+  const todoRoutes = require('./routes/todoRoutes');
+  app.use('/todos', todoRoutes);
+  console.log('✅ Todo routes loaded at /todos');
+} catch (error) {
+  console.error('❌ Failed to load todo routes:', error.message);
+}
+
+try {
+  const categoryRoutes = require('./routes/categoryRoutes');
+  app.use('/categories', categoryRoutes);
+  console.log('✅ Category routes loaded at /categories');
+} catch (error) {
+  console.error('❌ Failed to load category routes:', error.message);
+}
+
+try {
+  const attachmentRoutes = require('./routes/attachmentRoutes');
+  app.use('/attachments', attachmentRoutes);
+  console.log('✅ Attachment routes loaded at /attachments');
+} catch (error) {
+  console.error('❌ Failed to load attachment routes:', error.message);
+}
+
+// Debug: List all registered routes
+app._router.stack.forEach((middleware) => {
+  if (middleware. route) {
+    console.log(`Route: ${Object.keys(middleware.route.methods)} ${middleware.route.path}`);
+  } else if (middleware.name === 'router') {
+    middleware.handle.stack.forEach((handler) => {
+      if (handler.route) {
+        console.log(`Route: ${Object.keys(handler. route.methods)} ${handler.route.path}`);
+      }
+    });
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 
@@ -73,7 +110,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   
   // Run migrations in background
   try {
-    console.log('Running database migrations in background...');
+    console. log('Running database migrations in background.. .');
     const { runMigrations } = require('./runMigrations');
     await runMigrations();
     console.log('✅ Migrations completed!\n');
