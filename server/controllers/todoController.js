@@ -123,26 +123,44 @@ const getTodoById = async (req, res) => {
 // @access  Private
 const createTodo = async (req, res) => {
   try {
-    console.log('📝 Create todo request received');
+    console.log('Create todo request received');
     console.log('Request body:', req.body);
     console.log('User ID:', req.user?.id);
     
     const userId = req.user.id;
-    const { title, description, priority, category, due_date, parent_id } = req.body;
+    const { title, description, priority, category, due_date, parent_id, is_recurring, recurrence_pattern, recurrence_interval, recurrence_end_date } = req.body;
+    
+    // Format due_date to MySQL DATE format (YYYY-MM-DD)
+    let formattedDueDate = null;
+    if (due_date) {
+      const date = new Date(due_date);
+      formattedDueDate = date.toISOString().split('T')[0]; // Gets YYYY-MM-DD
+    }
+    
+    // Format recurrence_end_date
+    let formattedRecurrenceEndDate = null;
+    if (recurrence_end_date) {
+      const date = new Date(recurrence_end_date);
+      formattedRecurrenceEndDate = date.toISOString().split('T')[0];
+    }
     
     console.log('Parsed values:', {
       userId,
       title,
       description,
       priority: priority || 'medium',
-      category: category || 'general',
-      due_date: due_date || null,
-      parent_id: parent_id || null
+      category: category || 'personal',
+      due_date: formattedDueDate,
+      parent_id: parent_id || null,
+      is_recurring: is_recurring || false,
+      recurrence_pattern: recurrence_pattern || null,
+      recurrence_interval: recurrence_interval || null,
+      recurrence_end_date: formattedRecurrenceEndDate
     });
     
     // Validate required fields
     if (!title || title.trim() === '') {
-      console.log('❌ Validation failed: title is required');
+      console.log('Validation failed: title is required');
       return res.status(400).json({
         success: false,
         error: 'Title is required'
@@ -158,7 +176,7 @@ const createTodo = async (req, res) => {
       );
       
       if (parentTodos.length === 0) {
-        console.log('❌ Parent todo not found');
+        console.log('Parent todo not found');
         return res.status(404).json({
           success: false,
           error: 'Parent todo not found'
@@ -166,24 +184,28 @@ const createTodo = async (req, res) => {
       }
     }
     
-    console.log('✅ Validation passed, inserting into database...');
+    console.log('Validation passed, inserting into database...');
     
     const [result] = await db.query(
-      `INSERT INTO todos (user_id, title, description, priority, category, due_date, parent_id, is_subtask) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO todos (user_id, title, description, priority, category, due_date, parent_id, is_subtask, is_recurring, recurrence_pattern, recurrence_interval, recurrence_end_date) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         title.trim(),
         description || null,
         priority || 'medium',
-        category || 'general',
-        due_date || null,
+        category || 'personal',
+        formattedDueDate,
         parent_id || null,
-        parent_id ? true : false
+        parent_id ? true : false,
+        is_recurring || false,
+        recurrence_pattern || null,
+        recurrence_interval || null,
+        formattedRecurrenceEndDate
       ]
     );
     
-    console.log('✅ Todo inserted with ID:', result.insertId);
+    console.log('Todo inserted with ID:', result.insertId);
     
     // Get the created todo
     const [todos] = await db.query(
@@ -191,23 +213,23 @@ const createTodo = async (req, res) => {
       [result.insertId]
     );
     
-    console.log('✅ Todo created successfully:', todos[0]);
+    console.log('Todo created successfully:', todos[0]);
     
     res.status(201).json({
+
       success: true,
       message: parent_id ? 'Subtask created successfully' : 'Todo created successfully',
       data: todos[0]
     });
     
   } catch (error) {
-    console.error('❌ Create todo error - Full details:', {
+    console.error('Create todo error - Full details:', {
       message: error.message,
       code: error.code,
       errno: error.errno,
       sqlState: error.sqlState,
       sqlMessage: error.sqlMessage,
-      sql: error.sql,
-      stack: error.stack
+      sql: error.sql
     });
     
     res.status(500).json({
@@ -229,7 +251,7 @@ const updateTodo = async (req, res) => {
     
     // Check if todo exists and belongs to user
     const [todos] = await db.query(
-      'SELECT * FROM todos WHERE id = ? AND user_id = ? ',
+      'SELECT * FROM todos WHERE id = ? AND user_id = ?',
       [id, userId]
     );
     
@@ -241,6 +263,17 @@ const updateTodo = async (req, res) => {
     }
     
     const todo = todos[0];
+    
+    // Format due_date
+    let formattedDueDate = todo.due_date;
+    if (due_date !== undefined) {
+      if (due_date === null) {
+        formattedDueDate = null;
+      } else {
+        const date = new Date(due_date);
+        formattedDueDate = date.toISOString().split('T')[0];
+      }
+    }
     
     // Update todo
     await db.query(
@@ -257,7 +290,7 @@ const updateTodo = async (req, res) => {
         description !== undefined ? description : todo.description,
         priority || todo.priority,
         category || todo.category,
-        due_date !== undefined ? due_date :  todo.due_date,
+        formattedDueDate,
         id,
         userId
       ]
@@ -265,13 +298,13 @@ const updateTodo = async (req, res) => {
     
     // Get updated todo
     const [updated] = await db.query(
-      'SELECT * FROM todos WHERE id = ? ',
+      'SELECT * FROM todos WHERE id = ?',
       [id]
     );
     
     // Get subtasks
     const [subtasks] = await db.query(
-      'SELECT * FROM todos WHERE parent_id = ? ',
+      'SELECT * FROM todos WHERE parent_id = ?',
       [id]
     );
     
