@@ -97,12 +97,25 @@ app.get('/test-create-todo', async (req, res) => {
   try {
     const db = require('./config/database');
     
-    // Try to insert a test todo
+    // First, check what users exist
+    const [users] = await db.query('SELECT id, username, email FROM users');
+    
+    if (users.length === 0) {
+      return res.json({
+        status: 'error',
+        message: 'No users found in database. Please register a user first.',
+        users: []
+      });
+    }
+    
+    // Try to insert a test todo with the first existing user
+    const testUserId = users[0].id;
+    
     const [result] = await db.query(
       `INSERT INTO todos (user_id, title, description, priority, category, due_date, parent_id, is_subtask) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        1, // Test user ID
+        testUserId,
         'Test Todo',
         'Test description',
         'medium',
@@ -116,7 +129,9 @@ app.get('/test-create-todo', async (req, res) => {
     res.json({ 
       status: 'ok',
       message: 'Test todo created',
-      insertId: result.insertId
+      insertId: result.insertId,
+      usedUserId: testUserId,
+      existingUsers: users.map(u => ({ id: u.id, username: u.username }))
     });
   } catch (error) {
     res.status(500).json({ 
