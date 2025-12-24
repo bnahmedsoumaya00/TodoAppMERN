@@ -26,7 +26,7 @@ A full-stack todo application with a beautiful dark theme, built with the MERN s
 ![Axios](https://img.shields.io/badge/Axios-1.12-5A29E4?logo=axios)
 
 ### Backend
-![Node.js](https://img.shields.io/badge/Node.js-Latest-339933?logo=node. js)
+![Node.js](https://img.shields.io/badge/Node.js-Latest-339933?logo=node.js)
 ![Express](https://img.shields.io/badge/Express-4.x-000000?logo=express)
 ![MySQL](https://img.shields.io/badge/MySQL-9.4-4479A1?logo=mysql)
 ![JWT](https://img.shields.io/badge/JWT-Auth-000000?logo=json-web-tokens)
