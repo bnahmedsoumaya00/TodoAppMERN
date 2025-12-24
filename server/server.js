@@ -17,7 +17,7 @@ const corsOptions = {
       /^https:\/\/.*\.vercel\.app$/
     ];
     
-    const isAllowed = allowedOrigins.some(allowed => {
+    const isAllowed = allowedOrigins. some(allowed => {
       if (allowed instanceof RegExp) {
         return allowed.test(origin);
       }
@@ -31,18 +31,18 @@ const corsOptions = {
     }
   },
   credentials: true,
-  optionsSuccessStatus:  200
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-const authRoutes = require('./routes/auth');
-const todoRoutes = require('./routes/todos');
-const categoryRoutes = require('./routes/categories');
-const attachmentRoutes = require('./routes/attachments');
+// Routes - FIXED:  Use correct filenames
+const authRoutes = require('./routes/authRoutes');
+const todoRoutes = require('./routes/todoRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const attachmentRoutes = require('./routes/attachmentRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/todos', todoRoutes);
@@ -50,11 +50,11 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/attachments', attachmentRoutes);
 
 // Health check
-app. get('/', (req, res) => {
+app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'Todo API is running',
-    environment: process.env. NODE_ENV 
+    environment: process.env.NODE_ENV 
   });
 });
 
